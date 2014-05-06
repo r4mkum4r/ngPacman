@@ -1,0 +1,12 @@
+extends layout
+
+block content
+	div.container(ng-controller='mainCtrl')
+		div.page-header
+			h2 {{ title }} 
+				small {{ subtitle }}
+
+		div.row
+			div.gameContainer
+				div.col-md-12
+					canvas#stage.col-md-12(height='400px', game-stage)

@@ -1,0 +1,23 @@
+{
+  "name": "ngPacman",
+  "version": "0.0.1",
+  "authors": [
+    "r4m <r4mkum4r.r@gmail.com>"
+  ],
+  "description": "Pacman Multiplayer Game",
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "app/bower_components",
+    "public/javascripts/vendors",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "angular": "~1.2.16",
+    "bootstrap": "~3.1.1",
+    "socket.io": "~0.9.15"
+  }
+}

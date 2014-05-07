@@ -63,7 +63,7 @@ var io = require('socket.io').listen(server);
 
 io.sockets.on('connection', function(socket){
 
-    socket.emit('createPlayer', socket.id);
+    socket.emit('createGame');
 
     socket.on('clientMoved', function(posY){
         this.broadcast.emit('moveClient', posY, socket.id);

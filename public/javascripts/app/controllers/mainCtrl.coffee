@@ -1,12 +1,12 @@
-angular.module 'pacman.controllers'
-	.controller 'mainCtrl', ['$scope', 'canvasService', ($scope, canvasService)->
+angular.module('pacman.controllers')
+	.controller 'mainCtrl', ['$scope', ($scope)->
 
 		# $scope.title = 'ngPacman'
 		# $scope.subtitle = 'Multiplayer Pacman'
 		
-		$scope.stage = document.getElementById 'stage'
+		# $scope.stage = document.getElementById 'stage'
 
-		canvasService.scope = $scope
+		# canvasService.scope = $scope
 
-		canvasService.init()
+		# canvasService.init()
 	]

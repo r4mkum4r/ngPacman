@@ -1,4 +1,4 @@
-angular.module 'pacman.directives'
+angular.module('pacman.directives')
 	.directive 'gameStage', ['canvasService', (canvasService) ->
 
 		{

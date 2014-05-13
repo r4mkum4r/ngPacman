@@ -4,11 +4,18 @@ var favicon = require('static-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
-
 var routes = require('./routes/index');
 var users = require('./routes/users');
 
-var app = express();
+var app = express(),
+    playersStatus = {
+        isPlayerOneJoined : false,
+        isPlayerTwoJoined : false,
+        isPlayerThreeJoined : false
+    }
+    players = [],
+    Player = require('./host/player');
+
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -61,12 +68,53 @@ var server = app.listen(3000, function() {
 
 var io = require('socket.io').listen(server);
 
-io.sockets.on('connection', function(socket){
+io.sockets.on('connection', function(client){
 
-    socket.emit('createGame');
+    if(players.length >= 3){
+        return;
+    }
 
-    socket.on('clientMoved', function(posY){
-        this.broadcast.emit('moveClient', posY, socket.id);
+    var newPlayer = new Player();
+
+    newPlayer.id = client.id;
+
+    if(playersStatus.isPlayerOneJoined === false){
+        newPlayer.type = 1;
+        playersStatus.isPlayerOneJoined = true;
+    }
+    else
+    if(playersStatus.isPlayerTwoJoined === false)
+    {
+        newPlayer.type = 2;
+        playersStatus.isPlayerTwoJoined = true;
+    }
+
+    this.emit('createPlayer', newPlayer);
+    
+    for(var i=0; i < players.length; i++){
+        client.emit('createPlayer', players[i]);
+    }
+
+    players.push(newPlayer);
+
+    if(players.length === 2){
+        io.sockets.emit('startGame', players);
+    }
+
+    client.on('disconnect', function(){
+        for(var i=0; i< players.length; i++){
+            if(players[i].id === this.id){
+                if(players[i].type === 1){
+                    playersStatus.isPlayerOneJoined = false;
+                }
+                else
+                    if(players[i].type === 2){
+                        playersStatus.isPlayerTwoJoined = false;
+                    }
+                players.splice(i);
+                break;
+            }
+        }
     });
 
 });

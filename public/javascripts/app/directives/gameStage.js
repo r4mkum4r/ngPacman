@@ -70,13 +70,10 @@ angular.module('pacman.directives').directive('gameStage', [
             gameStage.prototype.createPlayer = function(player, startX, startY) {
               var newPlayer;
               newPlayer = new PlayerModel(player, startX, startY);
-              this.clearStage();
-              $timeout(function() {
-                newPlayer.draw($scope.canvas);
-                if ($scope.localPlayer) {
-                  return $scope.localPlayer.draw($scope.canvas);
-                }
-              }, 30);
+              newPlayer.draw($scope.canvas);
+              if ($scope.localPlayer) {
+                $scope.localPlayer.draw($scope.canvas);
+              }
               if ($scope.isLocalPlayerJoined === true) {
                 $scope.players.push(newPlayer);
               } else {

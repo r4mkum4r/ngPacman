@@ -26,7 +26,6 @@ angular.module('pacman.directives')
 								isTop : false
 							}
 
-
 							@stage.height = stageHeight
 							@stage.width = stageWidth
 
@@ -62,22 +61,17 @@ angular.module('pacman.directives')
 							
 							newPlayer = new PlayerModel(player, startX, startY)
 
-							@clearStage()
+							# @clearStage()
 
-							$timeout(->
-								newPlayer.draw($scope.canvas)
-								if $scope.localPlayer
-									$scope.localPlayer.draw($scope.canvas)
-							, 30)
+							newPlayer.draw($scope.canvas)
+							if $scope.localPlayer
+								$scope.localPlayer.draw($scope.canvas)
 							
-
 							if $scope.isLocalPlayerJoined is true
-								# newPlayer.draw($scope.canvas)
 								$scope.players.push newPlayer
 								
 							else
 								$scope.localPlayer = newPlayer
-								# $scope.localPlayer.draw($scope.canvas)
 								$scope.isLocalPlayerJoined = true
 
 							@setupControls()

@@ -1,64 +1,68 @@
 angular.module('pacman.services')
-	.factory 'PlayerModel', ->
+	.service 'PlayerModel', ->
 
 		class PlayerModel
 
-			id = 0
-			pos = {
-				x : 0,
-				y : 0
-			}
-			speed = {
-				x : 2,
-				y : 4
-			}
-			type = 0
-			dimensions = {
-				width: 20,
-				height: 100
+			defaults = {
+				id : 0
+				pos : {
+					x : 0,
+					y : 0
+				}
+				speed : {
+					x : 2,
+					y : 4
+				}
+				type : 0
+				isHost : false
+				dimensions : {
+					width: 20,
+					height: 100
+				}
 			}
 
-			constructor : (player, startX, startY) ->
+			constructor : (player) ->
 
-				id = player.id
-				type = player.type
-				pos.x = startX
-				pos.y = startY
+				@options = angular.extend {}, defaults, player
 
 
 			setX : (newX)=>
 
-				pos.x = newX
+				this.options.pos.x = newX
 
 			getX : =>
 
-				pos.x
+				this.options.pos.x
 
 			setY : (newY)=>
 
-				pos.y = newY
+				this.options.pos.y = newY
 
 			getY : =>
 
-				pos.y	
+				this.options.pos.y	
 
 			getId : ->
 
-				id
+				this.options.id
+
+			getType : ->
+
+				this.options.type
 
 			update : (key) ->
 
-				if @getY() + dimensions.height > 400
-					@setY(400 - dimensions.height)
+				if @getY() + this.options.dimensions.height > 400
+					@setY(400 - this.options.dimensions.height)
 
 				if @getY() < 0
 					@setY(0)
 
 				if key is 38
-					@setY(@getY() - speed.y)
+					@setY(@getY() - this.options.speed.y)
 
 				if key is 40
-					@setY(@getY() + speed.y)			
+					@setY(@getY() + this.options.speed.y)			
 
 			draw : (canvas)=>
-				canvas.fillRect pos.x, pos.y, dimensions.width, dimensions.height						
+				canvas.fillRect this.options.pos.x, this.options.pos.y, this.options.dimensions.width, this.options.dimensions.height						

@@ -18,13 +18,9 @@ angular.module('pacman.services').service('canvasService', [
           id: 0
         };
         defer = $q.defer();
-        return this.socket = io.connect('http://localhost:3000', {
+        return this.socket = io.connect('http://10.203.100.132:3000', {
           reconnect: false
         });
-      };
-
-      gameCanvas.prototype.updatePlayer = function(y) {
-        return this.socket.emit('clientMoved', y);
       };
 
       return gameCanvas;

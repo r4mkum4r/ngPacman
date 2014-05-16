@@ -77,15 +77,22 @@ io.sockets.on('connection', function(client){
     var newPlayer = new Player();
 
     newPlayer.id = client.id;
+    newPlayer.pos = {
+        x : 0,
+        y : 0
+    }
 
     if(playersStatus.isPlayerOneJoined === false){
         newPlayer.type = 1;
+        newPlayer.isHost = true;
         playersStatus.isPlayerOneJoined = true;
     }
     else
     if(playersStatus.isPlayerTwoJoined === false)
     {
         newPlayer.type = 2;
+        newPlayer.pos.x = 1090;
+        newPlayer.isHost = false;
         playersStatus.isPlayerTwoJoined = true;
     }
 
@@ -98,7 +105,7 @@ io.sockets.on('connection', function(client){
     players.push(newPlayer);
 
     if(players.length === 2){
-        io.sockets.emit('startGame', players);
+        io.sockets.emit('startGame');
     }
 
     client.on('disconnect', function(){
@@ -115,6 +122,14 @@ io.sockets.on('connection', function(client){
                 break;
             }
         }
+    });
+
+    client.on('playerMoved', function(player,keyCode){
+        io.sockets.emit('playerMoved', player, keyCode);
+    });
+
+    client.on('ballMoved', function(ball){
+        client.broadcast.emit('ballMoved', ball);
     });
 
 });

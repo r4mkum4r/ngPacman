@@ -2,16 +2,19 @@
 var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
 angular.module('pacman.directives').directive('gameStage', [
-  'canvasService', '$compile', 'PlayerModel', '$timeout', function(canvasService, $compile, PlayerModel, $timeout) {
+  'canvasService', '$compile', '$timeout', 'PlayerModel', 'BallModel', function(canvasService, $compile, $timeout, PlayerModel, BallModel) {
     return {
       controller: [
-        '$scope', '$timeout', '$interval', function($scope, $timeout, $interval) {
+        '$scope', '$timeout', '$interval', 'canvasService', 'BallModel', function($scope, $timeout, $interval, canvasService, BallModel) {
           var gameStage;
           gameStage = (function() {
             function gameStage() {
               this.setupControls = __bind(this.setupControls, this);
-              this.drawBall = __bind(this.drawBall, this);
+              this.createBall = __bind(this.createBall, this);
+              this.updateRemoteBall = __bind(this.updateRemoteBall, this);
+              this.updateBall = __bind(this.updateBall, this);
               this.updatePlayers = __bind(this.updatePlayers, this);
+              this.updatePlayer = __bind(this.updatePlayer, this);
               this.update = __bind(this.update, this);
               this.createPlayer = __bind(this.createPlayer, this);
               this.drawGameElements = __bind(this.drawGameElements, this);
@@ -26,13 +29,6 @@ angular.module('pacman.directives').directive('gameStage', [
                 speedY: 2
               };
               this.stage = {};
-              this.ball = {
-                radius: 10,
-                posX: 500,
-                posY: 100,
-                speedX: 2,
-                speedY: 2
-              };
               this.userControl = {
                 isDown: false,
                 isTop: false
@@ -43,11 +39,13 @@ angular.module('pacman.directives').directive('gameStage', [
               $scope.isLocalPlayerJoined = false;
               $scope.localPlayer = false;
               $scope.players = [];
+              $scope.gameStarted = false;
               return '';
             };
 
             gameStage.prototype.startGame = function() {
-              return this.update();
+              $scope.gameStarted = true;
+              return this.createBall();
             };
 
             gameStage.prototype.clearStage = function() {
@@ -67,59 +65,78 @@ angular.module('pacman.directives').directive('gameStage', [
               }
             };
 
-            gameStage.prototype.createPlayer = function(player, startX, startY) {
+            gameStage.prototype.createPlayer = function(player) {
               var newPlayer;
-              newPlayer = new PlayerModel(player, startX, startY);
-              newPlayer.draw($scope.canvas);
-              if ($scope.localPlayer) {
+              if (!$scope.localPlayer) {
+                $scope.localPlayer = new PlayerModel(player);
                 $scope.localPlayer.draw($scope.canvas);
-              }
-              if ($scope.isLocalPlayerJoined === true) {
-                $scope.players.push(newPlayer);
               } else {
-                $scope.localPlayer = newPlayer;
-                $scope.isLocalPlayerJoined = true;
+                newPlayer = new PlayerModel(player);
+                newPlayer.draw($scope.canvas);
+                $scope.players.push(newPlayer);
               }
-              return this.setupControls();
+              this.setupControls();
+              return this.update();
             };
 
             gameStage.prototype.update = function() {
+              this.clearStage();
               this.updatePlayers();
-              this.updateBall();
+              if ($scope.ball) {
+                this.updateBall();
+              }
               return window.requestAnimFrame(this.update);
+            };
+
+            gameStage.prototype.updatePlayer = function(player) {
+              if (!($scope.localPlayer.getId() === player.options.id)) {
+                $scope.players[0].setX(player.options.pos.x);
+                return $scope.players[0].setY(player.options.pos.y);
+              }
             };
 
             gameStage.prototype.updatePlayers = function() {
               this.clearStage();
-              $scope.localPlayer.draw($scope.canvas);
-              return $scope.players.forEach(function(player) {
-                return player.draw($scope.canvas);
-              });
+              if ($scope.localPlayer) {
+                $scope.localPlayer.draw($scope.canvas);
+              }
+              if ($scope.players.length > 0) {
+                return $scope.players[0].draw($scope.canvas);
+              }
             };
 
             gameStage.prototype.updateBall = function() {
-              if (this.ball.posX + (this.ball.radius * 2) > this.stage.width || this.ball.posX - this.ball.radius < 0) {
-                this.ball.speedX *= -1;
+              if ($scope.localPlayer.options.isHost && $scope.gameStarted) {
+                $scope.ball.update();
+                canvasService.socket.emit('ballMoved', $scope.ball);
+                $scope.ball.draw($scope.canvas);
+              } else if ($scope.ball) {
+                $scope.ball.draw($scope.canvas);
               }
-              if (this.ball.posY + (this.ball.radius * 2) > this.stage.height || this.ball.posY - this.ball.radius < 0) {
-                this.ball.speedY *= -1;
+              if ($scope.localPlayer.options.pos.x < $scope.ball.options.pos.x + $scope.ball.options.radius && $scope.localPlayer.options.pos.x + $scope.localPlayer.options.dimensions.width > $scope.ball.options.pos.x && $scope.localPlayer.options.pos.y < $scope.ball.options.pos.y + $scope.ball.options.radius && $scope.localPlayer.options.pos.y + $scope.localPlayer.options.dimensions.height > $scope.ball.options.pos.y) {
+                $scope.ball.options.speed.x *= -1;
+                $scope.ball.options.speed.x += 1;
+                $scope.ball.options.speed.y += 1;
+                return canvasService.socket.emit('ballMoved', $scope.ball);
               }
-              this.ball.posX += this.ball.speedX;
-              return this.ball.posY += this.ball.speedY;
             };
 
-            gameStage.prototype.drawBall = function() {
-              $scope.canvas.beginPath();
-              $scope.canvas.arc(this.ball.posX, this.ball.posY, this.ball.radius, 0, Math.PI * 2, true);
-              $scope.canvas.closePath();
-              return $scope.canvas.fill();
+            gameStage.prototype.updateRemoteBall = function(ball) {
+              $scope.ball.options.pos.x = ball.options.pos.x;
+              return $scope.ball.options.pos.y = ball.options.pos.y;
+            };
+
+            gameStage.prototype.createBall = function() {
+              $scope.ball = new BallModel();
+              return $scope.ball.draw($scope.canvas);
             };
 
             gameStage.prototype.setupControls = function() {
               return $(document).on('keydown', (function(_this) {
                 return function(e) {
                   if (e.keyCode === 38 || e.keyCode === 40) {
-                    return $scope.localPlayer.update(e.keyCode);
+                    $scope.localPlayer.update(e.keyCode);
+                    return canvasService.socket.emit('playerMoved', $scope.localPlayer, e.keyCode);
                   }
                 };
               })(this));
@@ -137,12 +154,20 @@ angular.module('pacman.directives').directive('gameStage', [
         ctrl.init($(elem).width(), $(elem).height());
         canvasService.socket.on('createPlayer', function(player) {
           if (player.type === 1) {
-            return ctrl.createPlayer(player, 0, 0);
+            return ctrl.createPlayer(player);
           } else if (player.type === 2) {
-            return ctrl.createPlayer(player, 1090, 0);
+            return ctrl.createPlayer(player);
           }
         });
-        return canvasService.socket.on('startGame', function(players) {});
+        canvasService.socket.on('startGame', function() {
+          return ctrl.startGame();
+        });
+        canvasService.socket.on('playerMoved', function(player, keyCode) {
+          return ctrl.updatePlayer(player);
+        });
+        return canvasService.socket.on('ballMoved', function(ball) {
+          return ctrl.updateRemoteBall(ball);
+        });
       }
     };
   }

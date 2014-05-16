@@ -1,10 +1,10 @@
 angular.module('pacman.directives')
-	.directive 'gameStage', ['canvasService','$compile','PlayerModel','$timeout', (canvasService, $compile, PlayerModel, $timeout) ->
+	.directive 'gameStage', ['canvasService','$compile','$timeout','PlayerModel', 'BallModel', (canvasService, $compile, $timeout, PlayerModel, BallModel) ->
 
 		{
 			controller : [
-				'$scope', '$timeout', '$interval',
-				($scope, $timeout, $interval)->
+				'$scope', '$timeout', '$interval','canvasService', 'BallModel',
+				($scope, $timeout, $interval, canvasService, BallModel)->
 					class gameStage
 
 						init : (stageWidth, stageHeight)=>
@@ -14,18 +14,10 @@ angular.module('pacman.directives')
 								speedY : 2
 							}
 							@stage = {}
-							@ball = {
-								radius : 10,
-								posX : 500,
-								posY : 100,
-								speedX : 2,
-								speedY : 2
-							}
 							@userControl = {
 								isDown : false,
 								isTop : false
 							}
-
 							@stage.height = stageHeight
 							@stage.width = stageWidth
 
@@ -33,12 +25,14 @@ angular.module('pacman.directives')
 							$scope.isLocalPlayerJoined = false
 							$scope.localPlayer = false
 							$scope.players = []
+							$scope.gameStarted = false
 							''
 
 						
 						startGame : =>
 
-							@update()
+							$scope.gameStarted = true
+							@createBall()
 							
 
 						clearStage : =>
@@ -57,75 +51,83 @@ angular.module('pacman.directives')
 									@player.speedX += 1
 								, 50)
 
-						createPlayer : (player, startX, startY)=>
-							
-							newPlayer = new PlayerModel(player, startX, startY)
+						createPlayer : (player)=>
 
-							# @clearStage()
-
-							newPlayer.draw($scope.canvas)
-							if $scope.localPlayer
-								$scope.localPlayer.draw($scope.canvas)
-							
-							if $scope.isLocalPlayerJoined is true
-								$scope.players.push newPlayer
-								
+							if not $scope.localPlayer
+								$scope.localPlayer = new PlayerModel player
+								$scope.localPlayer.draw $scope.canvas
 							else
-								$scope.localPlayer = newPlayer
-								$scope.isLocalPlayerJoined = true
+								newPlayer = new PlayerModel player
+								newPlayer.draw $scope.canvas
+								$scope.players.push newPlayer
 
 							@setupControls()
 
-							# @update()
+							@update()
 
 						update : =>
 
+							@clearStage()
+
 							@updatePlayers()
 
-							@updateBall()
+							if $scope.ball
+								@updateBall()
 
 							window.requestAnimFrame(@update)
+
+						updatePlayer : (player) =>
+							if not ( $scope.localPlayer.getId() is player.options.id )
+								$scope.players[0].setX player.options.pos.x
+								$scope.players[0].setY player.options.pos.y
 
 						updatePlayers : =>
 
 							@clearStage()
 
-							$scope.localPlayer.draw $scope.canvas
+							if $scope.localPlayer
+								$scope.localPlayer.draw $scope.canvas
 
-							# if $scope.players.length > 0
-							# 	console.log 'remote'
-								# $scope.players[0].draw $scope.canvas							
+							if $scope.players.length > 0
+								$scope.players[0].draw $scope.canvas	
 
-							$scope.players.forEach((player)->
-								player.draw $scope.canvas
-							)
+							# @updateBall()					
 
-						updateBall : ->
 
-							if @ball.posX + ( @ball.radius * 2 ) > @stage.width || @ball.posX - @ball.radius < 0
-								@ball.speedX *= -1							
+						updateBall : =>
 
-							# if  @ball.posX < 0
-							# 	$interval.cancel(@interval)
+							if $scope.localPlayer.options.isHost and $scope.gameStarted
+								$scope.ball.update()
+								canvasService.socket.emit 'ballMoved', $scope.ball
+								$scope.ball.draw($scope.canvas)
+							else if $scope.ball
+								$scope.ball.draw($scope.canvas)
 
-							if @ball.posY + ( @ball.radius * 2 ) > @stage.height || @ball.posY - @ball.radius < 0
-								@ball.speedY *= -1
-							
-							@ball.posX += @ball.speedX
-							@ball.posY += @ball.speedY
+							if ($scope.localPlayer.options.pos.x < $scope.ball.options.pos.x + $scope.ball.options.radius  and $scope.localPlayer.options.pos.x + $scope.localPlayer.options.dimensions.width  > $scope.ball.options.pos.x and $scope.localPlayer.options.pos.y < $scope.ball.options.pos.y + $scope.ball.options.radius and $scope.localPlayer.options.pos.y + $scope.localPlayer.options.dimensions.height > $scope.ball.options.pos.y )
 
-						drawBall : =>
+								$scope.ball.options.speed.x *= -1
+								$scope.ball.options.speed.x += 1
+								$scope.ball.options.speed.y += 1
+								canvasService.socket.emit 'ballMoved', $scope.ball
 
-							$scope.canvas.beginPath();
-							$scope.canvas.arc(@ball.posX, @ball.posY, @ball.radius, 0, Math.PI*2, true);
-							$scope.canvas.closePath();
-							$scope.canvas.fill();
+						updateRemoteBall : (ball)=>
+
+							$scope.ball.options.pos.x = ball.options.pos.x
+							$scope.ball.options.pos.y = ball.options.pos.y
+							# $scope.ball.draw($scope.canvas)
+							# @drawBall()
+
+						createBall : =>
+
+							$scope.ball = new BallModel()
+							$scope.ball.draw($scope.canvas)
 
 						setupControls : =>
 
 							$(document).on 'keydown', (e)=>
 								if e.keyCode is 38 or e.keyCode is 40
 									$scope.localPlayer.update e.keyCode
+									canvasService.socket.emit 'playerMoved', $scope.localPlayer, e.keyCode
 														
 
 					new gameStage
@@ -139,12 +141,18 @@ angular.module('pacman.directives')
 
 				canvasService.socket.on 'createPlayer', (player)->
 					if player.type is 1
-						ctrl.createPlayer player, 0, 0
+						ctrl.createPlayer player
 					else if player.type is 2
-						ctrl.createPlayer player, 1090, 0	
+						ctrl.createPlayer player	
 
-				canvasService.socket.on 'startGame', (players)->
+				canvasService.socket.on 'startGame', ->
+					ctrl.startGame()
+
+				canvasService.socket.on 'playerMoved', (player, keyCode)->
+					ctrl.updatePlayer player
 					
+				canvasService.socket.on 'ballMoved', (ball)->
+					ctrl.updateRemoteBall ball
 
 				
 		}
